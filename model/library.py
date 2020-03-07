@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 import random
 import json
 
@@ -17,22 +17,79 @@ class Game:
             self.completed = jList[2]
             self.tags = jList[3]
 
+    def __str__(self):
+        return f'{self.name}: i:{self.install}, c:{self.completed}, tags:{self.tags}'
 
-def sortByTag(tag: str, lib: List[Game]) -> List[Game]:
+
+class Library:
+    def __init__(self, games: List[Game]):
+        self.tags = set()
+        self.lib: Dict[str, Game] = {}
+        for x in games:
+            self.lib[x.name] = x
+            for t in x.tags:
+                if t not in self.tags:
+                    self.tags.add(t)
+
+    def __contains__(self, item: Game) -> bool:
+        return item.name in self.lib
+
+    def __len__(self) -> int:
+        return len(self.lib)
+
+    def __setitem__(self, key, value):
+        self.lib[key] = value
+
+    def __getitem__(self, key) -> Game:
+        return self.lib[key]
+
+    def __iter__(self):
+        return LibIter(self)
+
+    def selectRandGame(self) -> Game:
+        random.seed()
+        key = random.choice(list(self.lib.keys()))
+        return self[key]
+
+    def getNames(self) -> List[str]:
+        return list(self.lib.keys())
+
+    def getTags(self) -> List[str]:
+        return list(self.tags)
+
+    def addTag(self, tag: str):
+        if tag not in self.tags:
+            self.tags.add(tag)
+
+    def removeTag(self, tag: str):
+        if tag in self.tags:
+            self.tags.remove(tag)
+
+
+class LibIter:
+    def __init__(self, lib: Library):
+        self.lib = lib
+        self.keys = list(self.lib.getNames())
+        self.idx = -1
+        self.len = len(self.keys)
+
+    def __next__(self):
+        self.idx += 1
+        if self.idx < self.len:
+            return self.lib[self.keys[self.idx]]
+        else:
+            raise StopIteration
+
+
+def sortByTag(tag: str, lib: Library) -> Library:
     out = []
     for x in lib:
-        if x.tags.__contains__(tag):
+        if tag in x.tags:
             out.append(x)
-    return out
+    return Library(out)
 
 
-def selectRandGame(lib: List[Game]) -> Game:
-    random.seed()
-    idx = random.randrange(0, len(lib))
-    return lib[idx]
-
-
-def writeLibrary(lib: List[Game], file: str):
+def writeLibrary(lib: Library, file: str) -> None:
     with open(file, mode='w') as f:
         for x in lib:
             name = x.name
@@ -42,16 +99,14 @@ def writeLibrary(lib: List[Game], file: str):
             f.write(json.dumps([name, i, c, tags]) + '\n')
 
 
-def readLibrary(file: str) -> (List[Game], List[str]):
-    out = []
-    tags = []
+def readLibrary(file: str) -> Library:
+    libList = []
+
     try:
         with open(file, mode='r') as f:
             for x in f:
-                g = Game(jList=json.loads(x))
-                for tag in g.tags:
-                    if not tags.__contains__(tag):
-                        tags.append(tag)
+                libList.append(Game(jList=json.loads(x)))
+
     except FileNotFoundError:
         pass
-    return out, tags
+    return Library(libList)

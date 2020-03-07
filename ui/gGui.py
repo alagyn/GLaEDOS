@@ -1,4 +1,4 @@
-# Gui for GLaEDO
+# Gui for GLaEDOS
 
 
 import tkinter as tk
@@ -19,24 +19,14 @@ class Gui(tk.Frame):
         self.setupMenuBar()
 
         # DATA
-        self.games: List[lib.Game] = []
-        self.gameNames: List[str] = []
-        self.currentTags: List[str] = []
-        self.totalTags: List[str] = []
-
-        self.loadLibrary()
+        # TODO save/retrieve last opened library
+        self.library: lib.Library = lib.readLibrary("")
+        #
+        self.namesVar = tk.StringVar()
+        self.currentTags = tk.StringVar()
 
         # MAIN FRAMES
         self.setupMainFrames()
-
-    def loadLibrary(self):
-        self.games, self.totalTags = lib.readLibrary(LIB_FILE)
-        self.setNames()
-
-    def setNames(self):
-        self.gameNames = []
-        for x in self.games:
-            self.gameNames.append(x.name)
 
     def setupMainFrames(self):
         self.grid(column=0, row=0)
@@ -47,7 +37,7 @@ class Gui(tk.Frame):
         lFrame.grid_columnconfigure(0, weight=1)
         rFrame.grid_columnconfigure(0, weight=1)
 
-        lList = tk.Listbox(lFrame, height=15, listvariable=tk.StringVar(value=self.gameNames))
+        lList = tk.Listbox(lFrame, height=15, listvariable=self.namesVar)
         rList = tk.Listbox(rFrame, height=15, listvariable=tk.StringVar(value=self.currentTags))
 
         lScroll = tk.Scrollbar(lFrame, orient=tk.VERTICAL, command=lList.yview)
@@ -66,6 +56,8 @@ class Gui(tk.Frame):
         self.master['menu'] = self.menubar
 
         menu_file = tk.Menu(self.menubar)
+        menu_file.add_command(label='Open Library', command=self.openLib)
+        menu_file.add_command(label='Save Library', command=self.saveLib)
         menu_file.add_command(label='Close', command=self.close)
 
         menu_edit = tk.Menu(self.menubar)
@@ -75,31 +67,77 @@ class Gui(tk.Frame):
         self.menubar.add_cascade(menu=menu_edit, label='Edit')
 
     def close(self):
-        lib.writeLibrary(self.games, LIB_FILE)
-        print("Close")
+        # TODO Save lib on close
+        lib.writeLibrary(self.library, "")
+        # print("Close")
         exit()
+
+    def updateGameList(self):
+        self.namesVar.set(self.library.getNames())
+
+    def createNewGame(self, name: str, i: bool, c: bool, tags: List[str]):
+        pass
+
+    def openLib(self):
+        # TODO save before load - overwrite prompt?
+        inFile = tk.StringVar()
+
+        # TODO Open lib prompt
+
+        self.library = lib.readLibrary(inFile.get())
+
+    def saveLib(self):
+        outFile = tk.StringVar()
+        # TODO Save lib prompt
+        try:
+            lib.writeLibrary(self.library, outFile.get())
+        except FileNotFoundError:
+            # TODO saveLib FNF error
+            pass
 
     def addNewGame(self):
         # TODO add new game cmd
-        pass
+        prompt = tk.Toplevel()
+        nameLabel = tk.Label(prompt, text='Name')
+        nameLabel.grid(column=0, row=0)
+
+        nameInput = tk.Entry(prompt)
+        nameInput.grid(column=1, row=0)
+        nameVar = tk.StringVar()
+        nameInput['textvariable'] = nameVar
+
+        def accept():
+            # TODO
+            #   self.createNewGame()
+            self.updateGameList()
+            prompt.destroy()
+
+        def cancel():
+            # TODO new game cancel
+            prompt.destroy()
+
+        confBtn = tk.Button(prompt, text='Accept', command=accept)
+        confBtn.grid(column=0, row=1)
+        cancBtn = tk.Button(prompt, text='Cancel', command=cancel)
+        cancBtn.grid(column=1, row=1)
 
     def addNewTag(self):
         val = tk.StringVar()
         # TODO add new tag cmd prompt
-
-        if not self.totalTags.__contains__(val.get()):
-            self.totalTags.append(val.get())
+        self.library.addTag(val.get())
 
     def editGame(self, game: lib.Game):
         # TODO edit game cmd
         pass
 
-    def rmTag(self, tag: str):
+    def rmTag(self):
+        val = tk.StringVar()
         # TODO rmTag dialog
-        self.totalTags.remove(tag)
+        self.library.removeTag(val.get())
 
     def randFromTags(self, tags: List[str]) -> lib.Game:
-        sortedList = self.games
+        sLib = self.library
         for x in tags:
-            sortedList = lib.sortByTag(x, sortedList)
-        return lib.selectRandGame(sortedList)
+            sLib = lib.sortByTag(x, sLib)
+
+        return sLib.selectRandGame()
