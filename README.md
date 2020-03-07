@@ -1,2 +1,2 @@
 # GLaEDO
-The Game Library and Existential Dread Organizer
+The Game Library and Existential Dread Optimization System
