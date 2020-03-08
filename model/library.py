@@ -1,10 +1,10 @@
-from typing import List, Dict
+from typing import List, Dict, Set
 import random
 import json
 
 
 class Game:
-    def __init__(self, name: str = None, installed: bool = False, completed: bool = False, tags: List[str] = None, *,
+    def __init__(self, name: str = None, installed: bool = False, completed: bool = False, tags: Set[str] = None, *,
                  jList=None):
         if jList is None:
             self.name = name
@@ -12,13 +12,19 @@ class Game:
             self.completed = completed
             self.tags = tags
         else:
-            self.name = jList[0]
-            self.install = jList[1]
-            self.completed = jList[2]
-            self.tags = jList[3]
+            self.name = str(jList[0])
+            self.install = bool(jList[1])
+            self.completed = bool(jList[2])
+            self.tags = set(jList[3])
 
     def __str__(self):
         return f'{self.name}: i:{self.install}, c:{self.completed}, tags:{self.tags}'
+
+    def removeTag(self, tag: str):
+        try:
+            self.tags.remove(tag)
+        except KeyError:
+            pass
 
 
 class Library:
@@ -43,6 +49,9 @@ class Library:
     def __getitem__(self, key) -> Game:
         return self.lib[key]
 
+    def __delitem__(self, key):
+        del self.lib[key]
+
     def __iter__(self):
         return LibIter(self)
 
@@ -62,8 +71,12 @@ class Library:
             self.tags.add(tag)
 
     def removeTag(self, tag: str):
-        if tag in self.tags:
+        try:
             self.tags.remove(tag)
+            for g in self:
+                g.removeTag(tag)
+        except KeyError:
+            pass
 
 
 class LibIter:
@@ -73,7 +86,7 @@ class LibIter:
         self.idx = -1
         self.len = len(self.keys)
 
-    def __next__(self):
+    def __next__(self) -> Game:
         self.idx += 1
         if self.idx < self.len:
             return self.lib[self.keys[self.idx]]
@@ -93,7 +106,7 @@ def writeLibrary(lib: Library, file: str) -> None:
     with open(file, mode='w') as f:
         for x in lib:
             name = x.name
-            tags = x.tags
+            tags = list(x.tags)
             i = x.install
             c = x.completed
             f.write(json.dumps([name, i, c, tags]) + '\n')
@@ -102,11 +115,13 @@ def writeLibrary(lib: Library, file: str) -> None:
 def readLibrary(file: str) -> Library:
     libList = []
 
-    try:
-        with open(file, mode='r') as f:
-            for x in f:
-                libList.append(Game(jList=json.loads(x)))
+    if file is not None:
+        try:
+            with open(file, mode='r') as f:
+                for x in f:
+                    libList.append(Game(jList=json.loads(x)))
 
-    except FileNotFoundError:
-        pass
+        except FileNotFoundError:
+            pass
+
     return Library(libList)
