@@ -32,30 +32,32 @@ class Gui(tk.Frame):
         self.needToSave = False
 
         self.namesVar = tk.StringVar()
-        self.currentTags = tk.StringVar()
+        self.tagList = self.library.getTags()
+        self.currentTags = tk.StringVar(value=self.tagList)
 
         # MAIN FRAMES
         self.setupMainFrames()
+        self.updateLists()
 
     def loadStartingLib(self):
         try:
             self.curLibFile = self.session[keys.CUR_LIB]
-            if not isfile(self.curLibFile):
+            if self.curLibFile is not None and not isfile(self.curLibFile):
                 self.curLibFile = None
         except KeyError:
             self.curLibFile = None
 
     def setupMainFrames(self):
         self.grid(column=0, row=0)
-        lFrame = tk.Frame(self, borderwidth=3, relief='groove')
-        rFrame = tk.Frame(self, borderwidth=3, relief='groove')
+        lFrame = tk.LabelFrame(self, text='Games', borderwidth=3, relief='groove')
+        rFrame = tk.LabelFrame(self, text='Tags', borderwidth=3, relief='groove')
         lFrame.grid(column=0, row=0)
         rFrame.grid(column=1, row=0)
         lFrame.grid_columnconfigure(0, weight=1)
         rFrame.grid_columnconfigure(0, weight=1)
 
         lList = tk.Listbox(lFrame, height=15, listvariable=self.namesVar)
-        rList = tk.Listbox(rFrame, height=15, listvariable=tk.StringVar(value=self.currentTags))
+        rList = tk.Listbox(rFrame, height=15, listvariable=self.currentTags)
 
         lScroll = tk.Scrollbar(lFrame, orient=tk.VERTICAL, command=lList.yview)
         rScroll = tk.Scrollbar(rFrame, orient=tk.VERTICAL, command=rList.yview)
@@ -67,6 +69,13 @@ class Gui(tk.Frame):
         lScroll.grid(column=1, row=0, sticky=(N, S))
         rList.grid(column=0, row=0, sticky=(N, S, W, E))
         rScroll.grid(column=1, row=0, sticky=(N, S))
+
+        # TODO MAIN GUI
+        #   Add game btn
+        #   Add tag btn
+        #   Sort/rand btn
+        #   Remove tag btn
+        #   Edit/Remove Game btn
 
     def setupMenuBar(self):
         self.master.option_add('*tearOff', False)
@@ -92,8 +101,10 @@ class Gui(tk.Frame):
         self.session.close()
         exit()
 
-    def updateGameList(self):
+    def updateLists(self):
         self.namesVar.set(self.library.getNames())
+        self.tagList = self.library.getTags()
+        self.currentTags.set(self.tagList)
 
     def createNewGame(self, name: str, i: bool, c: bool, tags: List[str]):
         pass
@@ -102,12 +113,11 @@ class Gui(tk.Frame):
         if self.needToSave:
             self.saveLib()
 
-        inFile = tk.StringVar()
+        inFile = filedialog.askopenfilename(defaultextension=LIB_EXT, initialfile=self.curLibFile)
 
-        # TODO Open lib prompt
-
-        self.curLibFile = inFile.get()
-        self.library = lib.readLibrary(inFile.get())
+        self.library = lib.readLibrary(inFile)
+        self.curLibFile = inFile
+        self.updateLists()
 
     def saveLib(self):
         if self.curLibFile is not None:
@@ -129,20 +139,55 @@ class Gui(tk.Frame):
     def addNewGame(self):
         # TODO add new game cmd
         prompt = tk.Toplevel()
-        nameLabel = tk.Label(prompt, text='Name')
+
+        inputFrame = tk.LabelFrame(prompt, text='Data')
+        tagFrame = tk.LabelFrame(prompt, text='Tags')
+
+        inputFrame.grid(column=0, row=0, sticky=(N, S), ipadx=4, ipady=4)
+        tagFrame.grid(column=1, row=0, sticky=(N, S), ipadx=4, ipady=4)
+
+        nameLabel = tk.Label(inputFrame, text='Name')
         nameLabel.grid(column=0, row=0)
 
-        nameInput = tk.Entry(prompt)
+        nameInput = tk.Entry(inputFrame)
         nameInput.grid(column=1, row=0)
         nameVar = tk.StringVar()
+
+        installed = tk.BooleanVar()
+        completed = tk.BooleanVar()
+
+        check_installed = tk.Checkbutton(inputFrame, text='Installed', variable=installed, onvalue=True, offvalue=False)
+        check_completed = tk.Checkbutton(inputFrame, text='Completed', variable=completed, onvalue=True, offvalue=False)
+
+        check_installed.grid(column=0, row=1, columnspan=2)
+        check_completed.grid(column=0, row=2, columnspan=2)
+
+        tagList = tk.Listbox(tagFrame, selectmode='extended', listvariable=self.currentTags)
+        tagList.grid(column=0, row=0, columnspan=2)
+
+        tagInputVar = tk.StringVar()
+
+        def addTag():
+            self.addNewTag(tagInputVar.get())
+            self.updateLists()
+
+        tagInput = tk.Entry(tagFrame, textvariable=tagInputVar)
+        tagAddBtn = tk.Button(tagFrame, text='Add Tag', command=addTag)
+        tagInput.grid(column=0, row=1)
+        tagAddBtn.grid(column=1, row=1)
         nameInput['textvariable'] = nameVar
 
         def accept():
-            # TODO
-            #   self.createNewGame()
-            self.needToSave = True
-            self.updateGameList()
-            prompt.destroy()
+            if len(nameVar.get()) != 0:
+                idx = tagList.curselection()
+                tags = set()
+                for x in idx:
+                    tags.add(self.tagList[x])
+                self.library.addGame(lib.Game(name=nameVar.get(), installed=installed.get(), completed=completed.get(),
+                                              tags=tags))
+                self.needToSave = True
+                self.updateLists()
+                prompt.destroy()
 
         def cancel():
             # TODO new game cancel
@@ -153,10 +198,8 @@ class Gui(tk.Frame):
         cancBtn = tk.Button(prompt, text='Cancel', command=cancel)
         cancBtn.grid(column=1, row=1)
 
-    def addNewTag(self):
-        val = tk.StringVar()
-        # TODO add new tag cmd prompt
-        self.library.addTag(val.get())
+    def addNewTag(self, tag: str):
+        self.library.addTag(tag)
         self.needToSave = True
 
     def editGame(self, game: lib.Game):

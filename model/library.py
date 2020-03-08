@@ -78,6 +78,10 @@ class Library:
         except KeyError:
             pass
 
+    def addGame(self, game: Game):
+        if game not in self:
+            self[game.name] = game
+
 
 class LibIter:
     def __init__(self, lib: Library):
@@ -125,3 +129,9 @@ def readLibrary(file: str) -> Library:
             pass
 
     return Library(libList)
+
+
+if __name__ == '__main__':
+    testGames = [Game('Shooter', tags={'ONE', 'TWO', 'THREE'}), Game('Potat', tags={'THREE', 'FOUR', 'FIVE'})]
+    testLib = Library(testGames)
+    writeLibrary(testLib, 'test.gl')
