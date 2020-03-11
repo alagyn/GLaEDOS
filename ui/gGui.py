@@ -90,7 +90,6 @@ class Gui(tk.Frame):
 
         menu_edit = tk.Menu(self.menubar)
         menu_edit.add_command(label='New Game', command=self.addNewGame)
-        menu_edit.add_command(label='New Tag', command=self.addNewTag)
 
         self.menubar.add_cascade(menu=menu_file, label='File')
         self.menubar.add_cascade(menu=menu_edit, label='Edit')
@@ -136,8 +135,35 @@ class Gui(tk.Frame):
             self.curLibFile = file
             self.saveLib()
 
+    def genTagFrame(self, frame) -> List[tk.BooleanVar]:
+        idx = 0
+        intVars = []
+        height = 200
+        canv = tk.Canvas(frame, height=height, width=100)
+
+        intFrame = tk.Frame(canv)
+
+        for x in self.tagList:
+            var = tk.BooleanVar()
+            intVars.append(var)
+            btn = tk.Checkbutton(intFrame, text=x, variable=var, onvalue=True, offvalue=False)
+            btn.grid(column=0, row=idx, sticky=W)
+            idx += 1
+
+        s = tk.Scrollbar(frame, orient=tk.VERTICAL, command=canv.yview)
+        canv.grid(column=0, row=0, sticky=(N, E, W, S))
+        s.grid(column=1, row=0, sticky=(N, S, W, E))
+
+        canv.create_window(0, 0, window=intFrame, anchor='nw')
+
+        self.update_idletasks()
+
+        canv.configure(scrollregion=canv.bbox('all'))
+        canv.configure(yscrollcommand=s.set)
+
+        return intVars
+
     def addNewGame(self):
-        # TODO add new game cmd
         prompt = tk.Toplevel()
 
         inputFrame = tk.LabelFrame(prompt, text='Data')
@@ -162,14 +188,17 @@ class Gui(tk.Frame):
         check_installed.grid(column=0, row=1, columnspan=2)
         check_completed.grid(column=0, row=2, columnspan=2)
 
-        tagList = tk.Listbox(tagFrame, selectmode='extended', listvariable=self.currentTags)
-        tagList.grid(column=0, row=0, columnspan=2)
-
+        tagListFrame = tk.LabelFrame(tagFrame, text='Select Tags')
+        tagListFrame.grid(column=0, row=0, columnspan=2, sticky=(N, S, E, W))
+        selectionVars = self.genTagFrame(tagListFrame)
         tagInputVar = tk.StringVar()
 
         def addTag():
             self.addNewTag(tagInputVar.get())
+            tagInputVar.set('')
             self.updateLists()
+            nonlocal selectionVars
+            selectionVars = self.genTagFrame(tagListFrame)
 
         tagInput = tk.Entry(tagFrame, textvariable=tagInputVar)
         tagAddBtn = tk.Button(tagFrame, text='Add Tag', command=addTag)
@@ -179,9 +208,15 @@ class Gui(tk.Frame):
 
         def accept():
             if len(nameVar.get()) != 0:
-                idx = tagList.curselection()
+                i = 0
+                idxs = []
+                for x in selectionVars:
+                    if x.get():
+                        idxs.append(i)
+                    i += 1
+
                 tags = set()
-                for x in idx:
+                for x in idxs:
                     tags.add(self.tagList[x])
                 self.library.addGame(lib.Game(name=nameVar.get(), installed=installed.get(), completed=completed.get(),
                                               tags=tags))
@@ -190,7 +225,6 @@ class Gui(tk.Frame):
                 prompt.destroy()
 
         def cancel():
-            # TODO new game cancel
             prompt.destroy()
 
         confBtn = tk.Button(prompt, text='Accept', command=accept)

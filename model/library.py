@@ -106,6 +106,8 @@ def sortByTag(tag: str, lib: Library) -> Library:
     return Library(out)
 
 
+# TODO save/load full tag list
+
 def writeLibrary(lib: Library, file: str) -> None:
     with open(file, mode='w') as f:
         for x in lib:
