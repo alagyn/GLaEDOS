@@ -1,5 +1,9 @@
-## GLaEDOS
+## GLaEDOS    (WIP)
 The Game Library and Existential Dread Optimization System
+
+Current version is not complete or working.
+
+Development may resume at a later date
 
 ---
 
